@@ -1,0 +1,9 @@
+{
+  "name": "pato-familiada-100-szczurow",
+  "version": "2.0.0",
+  "private": true,
+  "description": "PATO FAMILIADA: TV, mikrofon, edytor pytan, multiplayer i boty",
+  "scripts": { "start": "node server.js", "check": "node --check server.js && node --check public/app.js && node --check public/tv.js", "test": "node test_simulation.js && node test_voice_tv.js && node test_client_ui.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "express": "^4.21.2", "socket.io": "^4.8.1" }
+}
