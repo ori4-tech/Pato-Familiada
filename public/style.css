@@ -9,3 +9,6 @@
 .tv-link{display:inline-block;border-radius:12px;background:#f8cc65;color:#2d1c3c;font-weight:950;padding:12px 14px;text-decoration:none;margin:7px 9px 7px 0}
 .btn-mic{background:linear-gradient(110deg,#a342ee,#744bd6);box-shadow:0 4px 0 #4b2c83;color:#fff;font-size:17px}
 textarea:focus-visible{outline:3px solid #f7cf67;outline-offset:3px}
+
+/* Private host answer key; closed by default. Not shown on the shared TV screen. */
+.host-key-list{display:flex;flex-direction:column;gap:7px;margin-top:11px}.host-key-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;border:1px solid #8776b1;border-radius:11px;color:#fff;background:#3c305f;font-weight:800;text-align:left}.host-key-item b{color:#ffe09b;white-space:nowrap}.host-key-item:disabled{opacity:.55;background:#2b2945}
