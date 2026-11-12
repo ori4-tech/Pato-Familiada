@@ -7,6 +7,7 @@ let state=null, mode='team', selected=ROSTER[0], codeField='', busy=false;
 const BANK_KEY='pato-familiada-pytania-v2';
 let bank=null, editorOpen=false, editorIdx=0, speakerSelected=null;
 let recognition=null, listening=false;
+let hostKeyOpen=false, hostKeyRound='';
 const emptyQuestion=()=>({q:'Nowe pytanie PATO FAMILY?',answers:[['Odpowiedź 1',40,[]],['Odpowiedź 2',25,[]],['Odpowiedź 3',18,[]],['Odpowiedź 4',11,[]],['Odpowiedź 5',6,[]]]});
 const cleanBank=x=>{
   if(!Array.isArray(x)||!x.length||x.length>150)return null;
@@ -111,9 +112,19 @@ function lobby(){return shell(`<div class="panel center"><p class="cap">KOD POKO
   <div class="grid2 separator"><button class="btn btn-secondary btn-sm" data-action="bot">🤖 Dodaj bota</button><button class="btn btn-ghost btn-sm" data-action="removeBots">🗑️ Usuń boty</button></div><button class="btn btn-wide" data-action="start">🎬 START GRY!</button><p class="hostnote">Jako Wódz ocenisz odpowiedzi na swoim telefonie. W trybie drużynowym ustaw zespoły przyciskami ⇄.</p>`:`<div class="banner">⏳ Wódz zaraz rozpocznie grę!</div>`}
   </div><div class="center"><button class="soft-link" data-action="leave">Opuść pokój</button></div>`)}
 function answerBoard(){return `<div class="board">${state.answers.map((a,i)=>{
-  const see=a.text!==undefined;const eligible=state.host && !a.revealed && ['answer','steal'].includes(state.phase);
-  return `<button class="answer ${a.revealed?'revealed':'covered'} ${eligible?'eligible':''} answer-button" ${eligible?'':'disabled'} data-action="judge" data-idx="${i}"><span class="num">${i+1}</span><span class="text">${see?escapeHTML(a.text):'▰ ▰ ▰ ▰'}</span><span class="pts">${see?a.points*state.multiplier:'??'}</span></button>`;
+  const see=a.revealed && a.text!==undefined;const eligible=state.host && !a.revealed && ['answer','steal'].includes(state.phase);
+  return `<button class="answer ${a.revealed?'revealed':'covered'} ${eligible?'eligible':''} answer-button" ${eligible?'':'disabled'} data-action="judge" data-idx="${i}"><span class="num">${i+1}</span><span class="text">${see?escapeHTML(a.text):'• • • • • • • •'}</span><span class="pts">${see?a.points*state.multiplier:'?'}</span></button>`;
 }).join('')}</div>`}
+function hostAnswerKey(){
+  if(!state.host || !['answer','steal'].includes(state.phase))return '';
+  return `<div class="panel-soft separator host-key">
+    <button class="btn btn-secondary btn-wide btn-sm" data-action="keyToggle">${hostKeyOpen?'🔒 SCHOWAJ ŚCIĄGĘ':'🔐 POKAŻ ŚCIĄGĘ PROWADZĄCEGO'}</button>
+    <p class="muted small center">Na planszy odpowiedzi pozostają zakryte. Mikrofon odkrywa trafienia automatycznie.</p>
+    ${hostKeyOpen?`<p class="helper">⚠️ Tylko dla prowadzącego! Otwieraj na swoim telefonie, a nie na ekranie TV. Dotknij właściwej odpowiedzi, by ją odkryć wszystkim.</p>
+      <div class="host-key-list">${state.answers.map((a,i)=>`<button class="host-key-item" data-action="judge" data-idx="${i}" ${a.revealed?'disabled':''}>
+      <span>${i+1}. ${escapeHTML(a.text||'Odpowiedź ukryta')}</span><b>${a.revealed?'✅':String(a.points*state.multiplier)+' pkt'}</b></button>`).join('')}</div>`:''}
+  </div>`;
+}
 function stage(){
   const phase=state.phase;
   const qNum=Math.min(state.round,state.totalRounds);
@@ -121,6 +132,7 @@ function stage(){
   const label=phase==='buzz'?'🔴 Kto pierwszy?':phase==='answer'?`🎤 ODPOWIADA: ${escapeHTML(byId(state.activeId)?.name||'gracz')}${state.mode==='team'&&state.currentTeam!==null?' · '+owner:''}`:phase==='steal'?`🚨 KRADZIEŻ: ${teamName(state.stealTeam)}${state.activeId?' · '+escapeHTML(byId(state.activeId)?.name||''):''}`:'🏁 Runda zakończona!';
   return shell(`<div class="panel"><div class="between"><span class="pill gold">RUNDA ${qNum}/${state.totalRounds}</span><span class="pill">PUNKTY x${state.multiplier}</span></div><div class="separator">${scoreboard()}</div><div class="question">${escapeHTML(state.question)}</div>
   ${answerBoard()}
+  ${hostAnswerKey()}
   <div class="strikes">${'❌'.repeat(Math.min(state.strikes,3))}</div>
   <div class="banner">${label}<br><span class="small">${escapeHTML(state.last||'')}</span></div>
   ${phase==='buzz'?`<button class="buzzer" data-action="buzz">🔴<br>ZGŁASZAM<br>SIĘ!</button><p class="center muted small">Wciśnij jako pierwszy. Boty także mogą się zgłosić.</p>`:''}
@@ -191,6 +203,7 @@ app.addEventListener('click',e=>{
   if(action==='export'){exportBank();return;}
   if(action==='import'){document.querySelector('#bank-import')?.click();return;}
   if(action==='copyTV'){const msg=tvUrl();if(navigator.clipboard?.writeText)navigator.clipboard.writeText(msg).then(()=>toast('Link do TV skopiowany!')).catch(()=>toast('Link: '+msg));else toast('Link: '+msg);return;}
+  if(action==='keyToggle'){hostKeyOpen=!hostKeyOpen;render();return;}
   if(action==='mic'){startMic();return;}
   if(action==='speaker'){const pid=document.querySelector('#speaker-pick')?.value;if(pid)call('speaker',{pid});return;}
 
@@ -203,7 +216,11 @@ app.addEventListener('click',e=>{
   const payload=action==='wrong'?{idx:-1}:action==='judge'?{idx:Number(button.dataset.idx)}:action==='team'?{pid:button.dataset.id,team:Number(button.dataset.team)}:{};
   call(events[action],payload);
 });
-socket.on('state',next=>{state=next;render();});
+socket.on('state',next=>{
+  const key=`${next?.code||''}:${next?.round||0}`;
+  if(key!==hostKeyRound){hostKeyOpen=false;hostKeyRound=key;}
+  state=next;render();
+});
 socket.on('connect',()=>{const old=session();if(old)call('resume',old,()=>{});render();});
 socket.on('disconnect',()=>render());
 render();
