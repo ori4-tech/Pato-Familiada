@@ -67,7 +67,9 @@ function createCode() { let c; do { c=String(10000 + Math.floor(Math.random()*90
 function publicState(r, pid) {
   const host = r.hostId===pid;
   const q = r.questions[r.qidx];
-  const canSee = host || r.phase==='result' || r.phase==='final';
+  // Host gets the private answer key for manual judging, but only actually revealed
+  // answers are shared with players and the TV, including after the round ends.
+  const canSee = host;
   const ans = q ? q.answers.map((a,i) => r.revealed.includes(i) || canSee ? ({ text:a[0], points:a[1], index:i, revealed:r.revealed.includes(i) }) : ({index:i, revealed:false})) : [];
   return {
     code:r.code, phase:r.phase, mode:r.mode, players:r.players.map(p=>({id:p.id,name:p.name,bot:p.bot,online:p.online,team:p.team,score:p.score})),
